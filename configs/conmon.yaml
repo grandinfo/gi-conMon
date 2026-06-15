@@ -1,9 +1,9 @@
-# conmon.yaml — 完整配置示例
-# 环境变量使用 ${VAR_NAME} 语法引用
+# conmon.yaml ? ??????
+# ?????? ${VAR_NAME} ????
 
 server:
-  bind: "0.0.0.0:8080"
-  external_url: "http://localhost:8080"
+  bind: "0.0.0.0:11080"
+  external_url: "http://localhost:11080"
   tls:
     enabled: false
     # cert_file: "/etc/conmon/server.crt"
@@ -13,17 +13,17 @@ server:
     token_expire: "24h"
 
 storage:
-  # 单机 SQLite（推荐开发/边缘环境）
+  # ?? SQLite?????/?????
   type: "sqlite"
   path: "/var/lib/conmon/conmon.db"
 
-  # 生产 PostgreSQL（取消注释并注释上面的 sqlite 配置）
+  # ?? PostgreSQL??????????? sqlite ???
   # type: "postgresql"
   # dsn: "postgres://conmon:${DB_PASSWORD}@localhost:5432/conmon?sslmode=require"
 
   timeseries:
     type: "none"
-    # 启用 InfluxDB 时配置：
+    # ?? InfluxDB ????
     # type: "influxdb"
     # url: "http://localhost:8086"
     # token: "${INFLUXDB_TOKEN}"
@@ -33,35 +33,35 @@ storage:
     flush_interval: "500ms"
 
   retention:
-    raw: "168h"     # 7 天
-    events: "2160h" # 90 天
-    alerts: "4320h" # 180 天
+    raw: "168h"     # 7 ?
+    events: "2160h" # 90 ?
+    alerts: "4320h" # 180 ?
 
 probe:
   id: "probe-local-01"
-  name: "本地探针"
-  location: "本地"
+  name: "????"
+  location: "??"
   isp: ""
   tags: []
   concurrency: 100
   buffer_size: 100000
 
-# 监控目标列表
+# ??????
 monitors:
-  - name: "百度 ICMP"
+  - name: "?? ICMP"
     target: "www.baidu.com"
     protocol: "icmp"
     interval: "30s"
     timeout: "5s"
-    tags: ["示例", "互联网"]
+    tags: ["??", "???"]
 
-  - name: "百度 HTTPS"
+  - name: "?? HTTPS"
     target: "www.baidu.com"
     protocol: "https"
     port: 443
     interval: "1m"
     timeout: "10s"
-    tags: ["示例", "互联网", "HTTPS"]
+    tags: ["??", "???", "HTTPS"]
     probe_config:
       path: "/"
       expected_codes: [200]
@@ -72,51 +72,51 @@ monitors:
     protocol: "dns"
     port: 53
     interval: "1m"
-    tags: ["示例", "DNS"]
+    tags: ["??", "DNS"]
     probe_config:
       query_type: "A"
       query_domain: "example.com"
 
-  - name: "本地 HTTP"
+  - name: "?? HTTP"
     target: "localhost"
     protocol: "http"
-    port: 8080
+    port: 11080
     interval: "15s"
     timeout: "3s"
-    tags: ["本地", "自监控"]
+    tags: ["??", "???"]
     probe_config:
       path: "/health"
       expected_codes: [200]
 
 alerting:
   channels:
-    # 钉钉机器人（取消注释并填写 Webhook URL）
-    # - name: "运维钉钉"
+    # ????????????? Webhook URL?
+    # - name: "????"
     #   type: "dingtalk"
     #   config:
     #     webhook: "${DINGTALK_WEBHOOK_URL}"
     #     secret: "${DINGTALK_SECRET}"
 
-    # 企业微信机器人
-    # - name: "企业微信"
+    # ???????
+    # - name: "????"
     #   type: "wecom"
     #   config:
     #     webhook: "${WECOM_WEBHOOK_URL}"
 
-    # 通用 Webhook
-    # - name: "自定义 Webhook"
+    # ?? Webhook
+    # - name: "??? Webhook"
     #   type: "webhook"
     #   config:
     #     url: "https://your-system.com/api/alert"
 
   rules:
-    - name: "服务宕机告警"
+    - name: "??????"
       condition: "event.to_status == 'DOWN'"
-      channels: []   # 填入上方定义的渠道名称
+      channels: []   # ???????????
       severity: "error"
       throttle: "10m"
 
-    - name: "服务恢复通知"
+    - name: "??????"
       condition: "event.to_status == 'UP' && event.from_status == 'DOWN'"
       channels: []
       severity: "info"

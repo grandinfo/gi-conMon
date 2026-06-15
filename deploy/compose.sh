@@ -112,8 +112,8 @@ cmd_up() {
 
   # 等待 conmon-server 健康
   local http_port
-  http_port=$(grep "^CONMON_HTTP_PORT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "8080")
-  http_port="${http_port:-8080}"
+  http_port=$(grep "^CONMON_HTTP_PORT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "11080")
+  http_port="${http_port:-11080}"
 
   info "等待 conMon 服务就绪（最长 60 秒）..."
   local waited=0
@@ -157,8 +157,8 @@ cmd_status() {
   echo ""
 
   local http_port
-  http_port=$(grep "^CONMON_HTTP_PORT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "8080")
-  http_port="${http_port:-8080}"
+  http_port=$(grep "^CONMON_HTTP_PORT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "11080")
+  http_port="${http_port:-11080}"
 
   if curl -sf "http://localhost:${http_port}/health" &>/dev/null; then
     echo -e "${BOLD}=== conMon 健康状态 ===${RESET}"
@@ -208,8 +208,8 @@ cmd_upgrade() {
 
   sleep 3
   local http_port
-  http_port=$(grep "^CONMON_HTTP_PORT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "8080")
-  http_port="${http_port:-8080}"
+  http_port=$(grep "^CONMON_HTTP_PORT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "11080")
+  http_port="${http_port:-11080}"
 
   if curl -sf "http://localhost:${http_port}/health" &>/dev/null; then
     local ver

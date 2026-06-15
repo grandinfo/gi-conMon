@@ -103,6 +103,7 @@ func (s *Server) registerRoutes(cfg Config) {
 	})
 
 	// System endpoints (no auth)
+	r.GET("/", s.handleIndex)
 	r.GET("/health", s.handleHealth)
 	r.GET("/ready", s.handleReady)
 	r.GET("/metrics", s.handleMetrics)
@@ -163,6 +164,11 @@ func (s *Server) buildUIHandler() gin.HandlerFunc {
 }
 
 // ---- handlers --------------------------------------------------------
+
+func (s *Server) handleIndex(c *gin.Context) {
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.String(http.StatusOK, indexHTML(version.Version))
+}
 
 func (s *Server) handleHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "version": version.Version})
@@ -369,6 +375,40 @@ func intQuery(c *gin.Context, key string, def int) int {
 		}
 	}
 	return def
+}
+
+func indexHTML(ver string) string {
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>conMon</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 16px; color: #1a1a1a; line-height: 1.6; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .ver { color: #666; font-size: 0.875rem; margin-bottom: 1.5rem; }
+  p { color: #444; }
+  ul { padding-left: 1.25rem; }
+  a { color: #2563eb; }
+  code { background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-size: 0.875rem; }
+</style>
+</head>
+<body>
+<h1>conMon</h1>
+<p class="ver">Connection Monitor · %s</p>
+<p>服务运行正常。conMon 当前为 <strong>API 后端</strong>，Web 控制台尚未集成；请通过以下接口访问：</p>
+<ul>
+  <li><a href="/health">/health</a> — 健康检查</li>
+  <li><a href="/api/v1/status">/api/v1/status</a> — 全局状态</li>
+  <li><a href="/api/v1/targets">/api/v1/targets</a> — 监控目标列表</li>
+  <li><a href="/api/v1/alerts">/api/v1/alerts</a> — 告警列表</li>
+  <li><a href="/api/v1/probes">/api/v1/probes</a> — 探针节点</li>
+  <li><a href="/metrics">/metrics</a> — 指标（Prometheus 格式）</li>
+</ul>
+<p>可视化大屏请使用 <code>Docker Compose</code> 部署 Grafana（<code>http://localhost:3000</code>）。</p>
+</body>
+</html>`, ver)
 }
 
 func loggerMiddleware() gin.HandlerFunc {

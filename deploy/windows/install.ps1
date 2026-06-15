@@ -156,8 +156,8 @@ if ($ConfigFile -and (Test-Path $ConfigFile)) {
     # 写入默认配置（Windows 路径）
     $defaultConfig = @"
 server:
-  bind: "0.0.0.0:8080"
-  external_url: "http://localhost:8080"
+  bind: "0.0.0.0:11080"
+  external_url: "http://localhost:11080"
   auth:
     jwt_secret: "CHANGE_ME_USE_STRONG_RANDOM_SECRET_32CHARS"
     token_expire: "24h"
@@ -187,7 +187,7 @@ monitors:
   - name: "自身健康检查"
     target: "localhost"
     protocol: "http"
-    port: 8080
+    port: 11080
     interval: "30s"
     probe_config:
       path: "/health"
@@ -240,8 +240,8 @@ if (-not (Test-Path $envFile)) {
 Write-Step "配置 Windows 防火墙"
 
 $fwRules = @(
-    @{ Name = 'conMon HTTP API';  Port = 8080 }
-    @{ Name = 'conMon gRPC Probe'; Port = 9090 }
+    @{ Name = 'conMon HTTP API';  Port = 11080 }
+    @{ Name = 'conMon gRPC Probe'; Port = 11090 }
 )
 
 foreach ($rule in $fwRules) {
@@ -299,7 +299,7 @@ function Stop-ConMon    { Stop-Service conmon;  Write-Host '✓ conMon 已停止
 function Restart-ConMon { Restart-Service conmon; Write-Host '✓ conMon 已重启' -ForegroundColor Green }
 function Get-ConMonStatus {
     `$svc = Get-Service conmon
-    `$resp = try { Invoke-RestMethod http://localhost:8080/health -TimeoutSec 3 } catch { `$null }
+    `$resp = try { Invoke-RestMethod http://localhost:11080/health -TimeoutSec 3 } catch { `$null }
     Write-Host "服务状态: `$(`$svc.Status)" -ForegroundColor $(if ($svc.Status -eq 'Running') { 'Green' } else { 'Red' })
     if (`$resp) { Write-Host "API 状态: `$(`$resp.status) v`$(`$resp.version)" -ForegroundColor Green }
 }
@@ -316,7 +316,7 @@ $shortcutPath = "$desktopPath\conMon 控制台.lnk"
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = 'powershell.exe'
-$shortcut.Arguments = "-NoExit -Command `"Start-Process http://localhost:8080; Write-Host 'conMon Web 控制台已在浏览器中打开' -ForegroundColor Green`""
+$shortcut.Arguments = "-NoExit -Command `"Start-Process http://localhost:11080; Write-Host 'conMon Web 控制台已在浏览器中打开' -ForegroundColor Green`""
 $shortcut.WorkingDirectory = $InstallDir
 $shortcut.Description = 'conMon Web 控制台'
 $shortcut.Save()
@@ -351,6 +351,6 @@ Write-Host ""
 Write-Host "  重要：请修改配置中的默认密钥：" -ForegroundColor Yellow
 Write-Host "    $targetConfig" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  服务地址：http://localhost:8080" -ForegroundColor White
-Write-Host "  健康检查：Invoke-RestMethod http://localhost:8080/health" -ForegroundColor Cyan
+Write-Host "  服务地址：http://localhost:11080" -ForegroundColor White
+Write-Host "  健康检查：Invoke-RestMethod http://localhost:11080/health" -ForegroundColor Cyan
 Write-Host ""

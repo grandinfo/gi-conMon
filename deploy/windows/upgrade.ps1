@@ -208,7 +208,7 @@ if (-not $DryRun) {
     Start-Sleep -Seconds 2
 
     try {
-        $health = Invoke-RestMethod 'http://localhost:8080/health' -TimeoutSec 5 -ErrorAction Stop
+        $health = Invoke-RestMethod 'http://localhost:11080/health' -TimeoutSec 5 -ErrorAction Stop
         Write-Ok "升级成功！运行版本: $($health.version)"
     } catch {
         Write-Warn "服务未响应，请手动检查"

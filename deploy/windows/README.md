@@ -65,7 +65,7 @@ cd deploy\windows
 Start-Service conmon
 
 # 3. 验证
-Invoke-RestMethod http://localhost:8080/health
+Invoke-RestMethod http://localhost:11080/health
 ```
 
 **快捷方式（CMD，双击 conmon-service.bat）：**
@@ -233,7 +233,7 @@ conmon-service.bat uninstall
 
 ```powershell
 $env:CONMON_VERSION    = 'v2.0.0'     # 镜像/二进制版本
-$env:CONMON_HTTP_PORT  = '8080'       # HTTP 端口
+$env:CONMON_HTTP_PORT  = '11080'       # HTTP 端口
 $env:CONMON_CONFIG     = 'D:\conmon.yaml'  # 配置文件路径
 $env:JWT_SECRET        = 'my-secret'  # JWT 密钥
 $env:DB_PASSWORD       = 'db-pass'    # 数据库密码
@@ -254,7 +254,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 
 确保以**管理员身份**运行 PowerShell（双击 `run-as-admin.bat`）。
 
-**Q: 服务启动后 `http://localhost:8080/health` 无响应**
+**Q: 服务启动后 `http://localhost:11080/health` 无响应**
 
 ```powershell
 # 查看服务状态
@@ -264,7 +264,7 @@ Get-Service conmon
 Get-EventLog -LogName Application -Source conmon -Newest 20 | Format-List
 
 # 检查防火墙
-Test-NetConnection -ComputerName localhost -Port 8080
+Test-NetConnection -ComputerName localhost -Port 11080
 ```
 
 **Q: Docker Desktop 不能启动**

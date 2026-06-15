@@ -228,7 +228,7 @@ func Load(path string) (*Config, error) {
 }
 
 func setDefaults(v *viper.Viper) {
-	v.SetDefault("server.bind", "0.0.0.0:8080")
+	v.SetDefault("server.bind", "0.0.0.0:11080")
 	v.SetDefault("server.auth.token_expire", "24h")
 	v.SetDefault("storage.type", "sqlite")
 	v.SetDefault("storage.path", "/var/lib/conmon/conmon.db")

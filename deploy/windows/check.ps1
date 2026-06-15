@@ -93,7 +93,7 @@ if ($disk) {
 }
 
 # 端口占用检查
-foreach ($port in @(8080, 9090)) {
+foreach ($port in @(11080, 11090)) {
     $listener = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($listener) {
         $proc = Get-Process -Id $listener[0].OwningProcess -ErrorAction SilentlyContinue
@@ -137,7 +137,7 @@ if ($Mode -in @('binary', 'all')) {
     $fwEnabled = (Get-NetFirewallProfile -Profile Domain,Public,Private -ErrorAction SilentlyContinue |
         Where-Object Enabled -eq True | Measure-Object).Count -gt 0
     if ($fwEnabled) {
-        Write-Warn "Windows 防火墙已启用，请确保放行 TCP 8080（HTTP）和 9090（gRPC）端口"
+        Write-Warn "Windows 防火墙已启用，请确保放行 TCP 11080（HTTP）和 11090（gRPC）端口"
     } else {
         Write-Info "Windows 防火墙未启用"
     }

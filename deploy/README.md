@@ -186,7 +186,7 @@ chmod +x deploy/*.sh
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `CONMON_VERSION` | 镜像/二进制版本 | `latest` |
-| `CONMON_HTTP_PORT` | HTTP 端口 | `8080` |
+| `CONMON_HTTP_PORT` | HTTP 端口 | `11080` |
 | `CONMON_CONFIG` | 配置文件路径 | `./configs/conmon.yaml` |
 | `CONMON_DATA_DIR` | 数据目录 | `/var/lib/conmon` |
 | `CONMON_CONFIG_DIR` | 配置目录 | `/etc/conmon` |

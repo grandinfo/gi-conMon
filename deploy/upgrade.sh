@@ -247,7 +247,7 @@ if ! $DRY_RUN; then
   section "验证升级结果"
   sleep 2
 
-  ENDPOINT="http://localhost:8080"
+  ENDPOINT="http://localhost:11080"
   if curl -sf "${ENDPOINT}/health" &>/dev/null; then
     NEW_VER=$(curl -s "${ENDPOINT}/health" | python3 -c \
       "import sys,json; print(json.load(sys.stdin).get('version','unknown'))" 2>/dev/null || echo "unknown")

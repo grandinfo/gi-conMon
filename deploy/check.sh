@@ -77,16 +77,16 @@ else
   log_warn "可用内存不足: ${mem_mb}MB，建议 ≥ 256MB"
 fi
 
-# 端口 8080 是否被占用
-if (ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || true) | grep -q ':8080 '; then
-  log_warn "端口 8080 已被占用（请确认是否为 conMon 实例）"
+# 端口 11080 是否被占用
+if (ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || true) | grep -q ':11080 '; then
+  log_warn "端口 11080 已被占用（请确认是否为 conMon 实例）"
 else
-  log_pass "端口 8080 可用"
+  log_pass "端口 11080 可用"
 fi
-if (ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || true) | grep -q ':9090 '; then
-  log_warn "端口 9090 已被占用（gRPC 探针端口）"
+if (ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || true) | grep -q ':11090 '; then
+  log_warn "端口 11090 已被占用（gRPC 探针端口）"
 else
-  log_pass "端口 9090 可用"
+  log_pass "端口 11090 可用"
 fi
 
 # =============================================================================

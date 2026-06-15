@@ -76,7 +76,7 @@ function Get-HttpPort {
         $line = Get-Content $EnvFile | Where-Object { $_ -match '^CONMON_HTTP_PORT=' }
         if ($line) { return ($line -split '=')[1].Trim() }
     }
-    return '8080'
+    return '11080'
 }
 
 # ── Init ─────────────────────────────────────────────────────────────────────

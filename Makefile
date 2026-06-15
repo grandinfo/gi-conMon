@@ -102,7 +102,7 @@ docker-push: ## 推送 Docker 镜像
 .PHONY: docker-run
 docker-run: ## 以 Docker 运行（开发模式）
 	docker run --rm -it \
-		-p 8080:8080 \
+		-p 11080:11080 \
 		-v $(PWD)/configs/conmon.yaml:/etc/conmon/conmon.yaml:ro \
 		-v conmon-data:/var/lib/conmon \
 		conmon/conmon:latest

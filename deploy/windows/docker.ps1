@@ -36,8 +36,8 @@ $ErrorActionPreference = 'Continue'
 # ── 配置 ─────────────────────────────────────────────────────────────────────
 $ContainerName = 'conmon'
 $Image         = 'conmon/conmon'
-$HttpPort      = $env:CONMON_HTTP_PORT  ?? '8080'
-$GrpcPort      = $env:CONMON_GRPC_PORT  ?? '9090'
+$HttpPort      = $env:CONMON_HTTP_PORT  ?? '11080'
+$GrpcPort      = $env:CONMON_GRPC_PORT  ?? '11090'
 $ConfigFile    = $env:CONMON_CONFIG     ?? (Join-Path (Get-Location) 'configs\conmon.yaml')
 $DataVolume    = 'conmon-data'
 $LogVolume     = 'conmon-logs'
@@ -83,8 +83,8 @@ function Invoke-Start {
     $runArgs = @(
         '--name', $ContainerName,
         '--restart', 'unless-stopped',
-        '-p', "${HttpPort}:8080",
-        '-p', "${GrpcPort}:9090",
+        '-p', "${HttpPort}:11080",
+        '-p', "${GrpcPort}:11090",
         '-v', "${DataVolume}:/var/lib/conmon",
         '-v', "${LogVolume}:/var/log/conmon"
     )
@@ -228,7 +228,7 @@ function Show-Usage {
 
 环境变量:
   CONMON_VERSION     镜像版本（默认: latest）
-  CONMON_HTTP_PORT   HTTP 端口（默认: 8080）
+  CONMON_HTTP_PORT   HTTP 端口（默认: 11080）
   CONMON_CONFIG      配置文件路径
 
 示例:

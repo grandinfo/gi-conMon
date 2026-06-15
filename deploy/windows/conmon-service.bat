@@ -62,7 +62,7 @@ echo === 服务状态 ===
 sc query %SERVICE_NAME%
 echo.
 echo === 健康检查 ===
-curl -sf http://localhost:8080/health 2>nul || echo [警告] API 未响应
+curl -sf http://localhost:11080/health 2>nul || echo [警告] API 未响应
 echo.
 goto :end
 

@@ -18,7 +18,7 @@ RELEASE="conmon"
 VERSION="v2.0.0"
 HELM_REPO="https://grandinfo.github.io/gi-conMon/charts"
 CHART="conmon/conmon"
-LOCAL_PORT="8080"
+LOCAL_PORT="11080"
 MANIFESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../deployments/kubernetes"
 
 # ---- 颜色 -------------------------------------------------------------------
@@ -182,9 +182,9 @@ spec:
         - name: conmon
           image: conmon/conmon:${VERSION}
           ports:
-            - containerPort: 8080
+            - containerPort: 11080
               name: http
-            - containerPort: 9090
+            - containerPort: 11090
               name: grpc
           env:
             - name: JWT_SECRET
@@ -198,13 +198,13 @@ spec:
           readinessProbe:
             httpGet:
               path: /ready
-              port: 8080
+              port: 11080
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: 11080
             initialDelaySeconds: 10
             periodSeconds: 30
           resources:
@@ -229,11 +229,11 @@ spec:
     app: conmon-server
   ports:
     - name: http
-      port: 8080
-      targetPort: 8080
+      port: 11080
+      targetPort: 11080
     - name: grpc
-      port: 9090
-      targetPort: 9090
+      port: 11090
+      targetPort: 11090
   type: ClusterIP
 YAML
     success "内联清单已应用"
@@ -298,11 +298,11 @@ cmd_status() {
 # ---- port-forward -----------------------------------------------------------
 cmd_port_forward() {
   check_kubectl
-  info "端口转发: localhost:${LOCAL_PORT} → conmon-server:8080"
+  info "端口转发: localhost:${LOCAL_PORT} → conmon-server:11080"
   info "按 Ctrl+C 停止"
   echo ""
   kubectl port-forward -n "$NAMESPACE" \
-    svc/conmon-server "${LOCAL_PORT}:8080"
+    svc/conmon-server "${LOCAL_PORT}:11080"
 }
 
 # ---- logs -------------------------------------------------------------------

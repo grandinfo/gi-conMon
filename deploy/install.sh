@@ -151,8 +151,8 @@ elif [[ ! -f "${CONFIG_DIR}/conmon.yaml" ]]; then
   # 写入内置默认配置
   cat > "${CONFIG_DIR}/conmon.yaml" << 'YAML'
 server:
-  bind: "0.0.0.0:8080"
-  external_url: "http://localhost:8080"
+  bind: "0.0.0.0:11080"
+  external_url: "http://localhost:11080"
   auth:
     jwt_secret: "CHANGE_ME_USE_STRONG_RANDOM_SECRET"
     token_expire: "24h"
@@ -175,7 +175,7 @@ monitors:
   - name: "自身健康检查"
     target: "localhost"
     protocol: "http"
-    port: 8080
+    port: 11080
     interval: "30s"
     probe_config:
       path: "/health"
@@ -309,6 +309,6 @@ echo -e "  ${YELLOW}重要：${RESET}请修改以下配置中的默认密钥："
 echo "    1. ${ENV_FILE}  →  JWT_SECRET"
 echo "    2. ${CONFIG_DIR}/conmon.yaml  →  配置监控目标"
 echo ""
-echo -e "  ${BOLD}服务地址：${RESET}http://localhost:8080"
-echo "  健康检查: curl http://localhost:8080/health"
+echo -e "  ${BOLD}服务地址：${RESET}http://localhost:11080"
+echo "  健康检查: curl http://localhost:11080/health"
 echo ""

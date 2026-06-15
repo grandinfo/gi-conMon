@@ -1,4 +1,6 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
+
+ENV GOPROXY=https://goproxy.cn,https://proxy.golang.org,direct
 
 WORKDIR /src
 
@@ -38,10 +40,10 @@ COPY configs/conmon.yaml /etc/conmon/conmon.yaml
 
 USER conmon
 
-EXPOSE 8080 9090
+EXPOSE 11080 11090
 
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
-    CMD wget -qO- http://localhost:8080/health || exit 1
+    CMD wget -qO- http://localhost:11080/health || exit 1
 
 ENTRYPOINT ["/usr/local/bin/conmon"]
 CMD ["server", "-c", "/etc/conmon/conmon.yaml"]
