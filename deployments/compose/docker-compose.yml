@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  conmon-server:
+    image: conmon/conmon:${CONMON_VERSION:-latest}
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    container_name: conmon-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../../configs/conmon.yaml:/etc/conmon/conmon.yaml:ro
+      - conmon-data:/var/lib/conmon
+      - conmon-logs:/var/log/conmon
+    environment:
+      - DB_PASSWORD=${DB_PASSWORD:-conmon123}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-}
+      - DINGTALK_WEBHOOK_URL=${DINGTALK_WEBHOOK_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - conmon-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: conmon-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: conmon
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-conmon123}
+      POSTGRES_DB: conmon
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - conmon-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conmon"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: conmon-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: "http://localhost:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - conmon-net
+
+volumes:
+  conmon-data:
+  conmon-logs:
+  postgres-data:
+  grafana-data:
+
+networks:
+  conmon-net:
+    driver: bridge

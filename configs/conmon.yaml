@@ -1,0 +1,131 @@
+# conmon.yaml — 完整配置示例
+# 环境变量使用 ${VAR_NAME} 语法引用
+
+server:
+  bind: "0.0.0.0:8080"
+  external_url: "http://localhost:8080"
+  tls:
+    enabled: false
+    # cert_file: "/etc/conmon/server.crt"
+    # key_file:  "/etc/conmon/server.key"
+  auth:
+    jwt_secret: "${JWT_SECRET}"
+    token_expire: "24h"
+
+storage:
+  # 单机 SQLite（推荐开发/边缘环境）
+  type: "sqlite"
+  path: "/var/lib/conmon/conmon.db"
+
+  # 生产 PostgreSQL（取消注释并注释上面的 sqlite 配置）
+  # type: "postgresql"
+  # dsn: "postgres://conmon:${DB_PASSWORD}@localhost:5432/conmon?sslmode=require"
+
+  timeseries:
+    type: "none"
+    # 启用 InfluxDB 时配置：
+    # type: "influxdb"
+    # url: "http://localhost:8086"
+    # token: "${INFLUXDB_TOKEN}"
+    # org: "conmon"
+    # bucket: "conmon_metrics"
+    batch_size: 1000
+    flush_interval: "500ms"
+
+  retention:
+    raw: "168h"     # 7 天
+    events: "2160h" # 90 天
+    alerts: "4320h" # 180 天
+
+probe:
+  id: "probe-local-01"
+  name: "本地探针"
+  location: "本地"
+  isp: ""
+  tags: []
+  concurrency: 100
+  buffer_size: 100000
+
+# 监控目标列表
+monitors:
+  - name: "百度 ICMP"
+    target: "www.baidu.com"
+    protocol: "icmp"
+    interval: "30s"
+    timeout: "5s"
+    tags: ["示例", "互联网"]
+
+  - name: "百度 HTTPS"
+    target: "www.baidu.com"
+    protocol: "https"
+    port: 443
+    interval: "1m"
+    timeout: "10s"
+    tags: ["示例", "互联网", "HTTPS"]
+    probe_config:
+      path: "/"
+      expected_codes: [200]
+      cert_warn_days: 30
+
+  - name: "Google DNS"
+    target: "8.8.8.8"
+    protocol: "dns"
+    port: 53
+    interval: "1m"
+    tags: ["示例", "DNS"]
+    probe_config:
+      query_type: "A"
+      query_domain: "example.com"
+
+  - name: "本地 HTTP"
+    target: "localhost"
+    protocol: "http"
+    port: 8080
+    interval: "15s"
+    timeout: "3s"
+    tags: ["本地", "自监控"]
+    probe_config:
+      path: "/health"
+      expected_codes: [200]
+
+alerting:
+  channels:
+    # 钉钉机器人（取消注释并填写 Webhook URL）
+    # - name: "运维钉钉"
+    #   type: "dingtalk"
+    #   config:
+    #     webhook: "${DINGTALK_WEBHOOK_URL}"
+    #     secret: "${DINGTALK_SECRET}"
+
+    # 企业微信机器人
+    # - name: "企业微信"
+    #   type: "wecom"
+    #   config:
+    #     webhook: "${WECOM_WEBHOOK_URL}"
+
+    # 通用 Webhook
+    # - name: "自定义 Webhook"
+    #   type: "webhook"
+    #   config:
+    #     url: "https://your-system.com/api/alert"
+
+  rules:
+    - name: "服务宕机告警"
+      condition: "event.to_status == 'DOWN'"
+      channels: []   # 填入上方定义的渠道名称
+      severity: "error"
+      throttle: "10m"
+
+    - name: "服务恢复通知"
+      condition: "event.to_status == 'UP' && event.from_status == 'DOWN'"
+      channels: []
+      severity: "info"
+
+log:
+  level: "info"   # debug | info | warn | error
+  format: "json"  # json | text
+  output: "stdout"
+
+debug:
+  pprof: false
+  pprof_addr: "127.0.0.1:6060"
