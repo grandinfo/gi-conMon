@@ -74,21 +74,30 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 	alerterInst := alerter.New(rules, channels, notifiers, getTarget)
 
-	// Seed targets from config and start scheduler
+	// Start API server first so we can get the Hub reference
+	apiSrv := api.New(api.Config{
+		Bind:        cfg.Server.Bind,
+		JWTSecret:   cfg.Server.Auth.JWTSecret,
+		ExternalURL: cfg.Server.ExternalURL,
+	}, store, fsmInst, alerterInst)
+	hub := apiSrv.Hub()
+
+	// Build probe scheduler that feeds FSM and broadcasts to WebUI
 	nodeID := cfg.Probe.ID
 	if nodeID == "" {
 		nodeID = "local"
 	}
 	scheduler := probe.NewScheduler(cfg.Probe.Concurrency, nodeID, func(result *probe.Result) {
-		ctx := context.Background()
-		t, err := store.GetTarget(ctx, result.TargetID)
+		bgCtx := context.Background()
+		t, err := store.GetTarget(bgCtx, result.TargetID)
 		if err != nil || t == nil {
 			return
 		}
 		changed, event := fsmInst.Process(result, t)
 		if changed && event != nil {
-			_ = store.SaveEvent(ctx, event)
-			alerterInst.Process(ctx, event)
+			_ = store.SaveEvent(bgCtx, event)
+			alerterInst.Process(bgCtx, event)
+			hub.BroadcastEvent(event) // 实时推送状态变更到 WebUI
 		}
 	})
 
@@ -119,13 +128,6 @@ func runServer(cmd *cobra.Command, args []string) error {
 			scheduler.Add(t)
 		}
 	}
-
-	// Start API server
-	apiSrv := api.New(api.Config{
-		Bind:        cfg.Server.Bind,
-		JWTSecret:   cfg.Server.Auth.JWTSecret,
-		ExternalURL: cfg.Server.ExternalURL,
-	}, store, fsmInst, alerterInst)
 
 	if err := apiSrv.Start(ctx); err != nil {
 		slog.Error("server error", "err", err)

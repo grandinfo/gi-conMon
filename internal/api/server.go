@@ -13,6 +13,7 @@ import (
 	"github.com/grandinfo/gi-conMon/internal/fsm"
 	"github.com/grandinfo/gi-conMon/internal/model"
 	"github.com/grandinfo/gi-conMon/internal/storage"
+	"github.com/grandinfo/gi-conMon/internal/ui"
 	"github.com/grandinfo/gi-conMon/internal/version"
 )
 
@@ -22,6 +23,7 @@ type Server struct {
 	store   storage.Store
 	fsm     *fsm.FSM
 	alerter *alerter.Engine
+	hub     *Hub
 	httpSrv *http.Server
 }
 
@@ -44,16 +46,22 @@ func New(cfg Config, store storage.Store, fsmInst *fsm.FSM, alerterInst *alerter
 		store:   store,
 		fsm:     fsmInst,
 		alerter: alerterInst,
+		hub:     NewHub(),
 		httpSrv: &http.Server{
 			Addr:         cfg.Bind,
 			Handler:      r,
 			ReadTimeout:  30 * time.Second,
-			WriteTimeout: 30 * time.Second,
+			WriteTimeout: 0, // SSE 需要长连接，不设置写超时
 			IdleTimeout:  120 * time.Second,
 		},
 	}
 	s.registerRoutes(cfg)
 	return s
+}
+
+// Hub 返回 WebSocket/SSE 事件分发器，供外部（server.go）广播事件。
+func (s *Server) Hub() *Hub {
+	return s.hub
 }
 
 // Start begins listening. It blocks until ctx is cancelled.
@@ -80,6 +88,19 @@ func (s *Server) Start(ctx context.Context) error {
 
 func (s *Server) registerRoutes(cfg Config) {
 	r := s.engine
+
+	// Web UI 静态文件
+	uiHandler := s.buildUIHandler()
+	r.GET("/", uiHandler)
+	r.GET("/app.js", uiHandler)
+	r.NoRoute(func(c *gin.Context) {
+		// SPA fallback：非 /api 路径返回 index.html
+		if len(c.Request.URL.Path) < 4 || c.Request.URL.Path[:4] != "/api" {
+			uiHandler(c)
+			return
+		}
+		c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND", "message": "endpoint not found"})
+	})
 
 	// System endpoints (no auth)
 	r.GET("/health", s.handleHealth)
@@ -117,6 +138,27 @@ func (s *Server) registerRoutes(cfg Config) {
 
 		// Probe nodes
 		v1.GET("/probes", s.handleListProbes)
+
+		// Real-time event stream (SSE, WebSocket-compatible JS client)
+		v1.GET("/ws/status", s.handleWS)
+	}
+}
+
+// buildUIHandler 返回服务嵌入式前端文件的处理函数。
+func (s *Server) buildUIHandler() gin.HandlerFunc {
+	uifs := ui.FS()
+	fileServer := http.FileServer(uifs)
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+		// 尝试直接访问文件
+		f, err := uifs.Open(path)
+		if err != nil {
+			// 文件不存在，返回 index.html（SPA 路由）
+			c.Request.URL.Path = "/"
+		} else {
+			f.Close()
+		}
+		fileServer.ServeHTTP(c.Writer, c.Request)
 	}
 }
 
