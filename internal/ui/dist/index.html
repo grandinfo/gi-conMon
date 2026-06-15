@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>conMon — 网络连接监控</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    [v-cloak] { display: none; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .slide-in { animation: slideIn 0.2s ease-out; }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .latency-bar { height: 4px; border-radius: 2px; transition: width 0.5s ease; }
+  </style>
+</head>
+<body class="h-full bg-slate-50 font-sans text-slate-800">
+
+<!-- ── 顶部导航 ─────────────────────────────────────────────────────────── -->
+<nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+  <div class="max-w-screen-xl mx-auto px-4 flex items-center justify-between h-14">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+        </svg>
+      </div>
+      <span class="text-lg font-bold text-slate-900">conMon</span>
+      <span class="text-xs text-slate-400 hidden sm:inline">网络连接监控</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <!-- WS 连接状态 -->
+      <div id="ws-indicator" class="flex items-center gap-1.5 text-xs text-slate-500">
+        <span class="status-dot bg-slate-300" id="ws-dot"></span>
+        <span id="ws-label">连接中...</span>
+      </div>
+      <!-- 页面导航 -->
+      <div class="flex gap-1">
+        <button onclick="showPage('dashboard')" data-page="dashboard"
+          class="nav-btn px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition">总览</button>
+        <button onclick="showPage('targets')" data-page="targets"
+          class="nav-btn px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition">目标</button>
+        <button onclick="showPage('events')" data-page="events"
+          class="nav-btn px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition">事件</button>
+        <button onclick="showPage('alerts')" data-page="alerts"
+          class="nav-btn px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+          告警
+          <span id="alert-badge" class="hidden ml-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full"></span>
+        </button>
+        <button onclick="showPage('probes')" data-page="probes"
+          class="nav-btn px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition">探针</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="max-w-screen-xl mx-auto px-4 py-6">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     总览页
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-dashboard" class="page">
+  <!-- 状态卡片 -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+      <div class="text-slate-500 text-xs font-medium mb-1">全部目标</div>
+      <div class="text-3xl font-bold text-slate-800" id="stat-total">—</div>
+      <div class="text-xs text-slate-400 mt-1">监控中</div>
+    </div>
+    <div class="bg-white rounded-xl border border-emerald-200 p-4 shadow-sm cursor-pointer hover:border-emerald-400 transition" onclick="filterTargets('UP')">
+      <div class="text-emerald-600 text-xs font-medium mb-1">正常 (UP)</div>
+      <div class="text-3xl font-bold text-emerald-600" id="stat-up">—</div>
+      <div class="text-xs text-emerald-400 mt-1">服务可用</div>
+    </div>
+    <div class="bg-white rounded-xl border border-red-200 p-4 shadow-sm cursor-pointer hover:border-red-400 transition" onclick="filterTargets('DOWN')">
+      <div class="text-red-600 text-xs font-medium mb-1">故障 (DOWN)</div>
+      <div class="text-3xl font-bold text-red-600" id="stat-down">—</div>
+      <div class="text-xs text-red-400 mt-1">需要处理</div>
+    </div>
+    <div class="bg-white rounded-xl border border-amber-200 p-4 shadow-sm cursor-pointer hover:border-amber-400 transition" onclick="filterTargets('DEGRADED')">
+      <div class="text-amber-600 text-xs font-medium mb-1">降级 (DEGRADED)</div>
+      <div class="text-3xl font-bold text-amber-600" id="stat-degraded">—</div>
+      <div class="text-xs text-amber-400 mt-1">性能下降</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- 目标状态列表 -->
+    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="font-semibold text-slate-700">监控目标</h2>
+        <input id="dash-search" type="text" placeholder="搜索..." onkeyup="renderDashTargets()"
+          class="text-sm border border-slate-200 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 w-40"/>
+      </div>
+      <div id="dash-targets" class="divide-y divide-slate-50 max-h-[460px] overflow-y-auto">
+        <div class="text-center py-12 text-slate-400 text-sm">加载中...</div>
+      </div>
+    </div>
+
+    <!-- 最近事件 -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="font-semibold text-slate-700">最近事件</h2>
+        <span class="text-xs text-slate-400" id="events-ts"></span>
+      </div>
+      <div id="dash-events" class="divide-y divide-slate-50 max-h-[460px] overflow-y-auto">
+        <div class="text-center py-12 text-slate-400 text-sm">加载中...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     目标页
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-targets" class="page hidden">
+  <div class="flex flex-col sm:flex-row gap-3 mb-5">
+    <div class="flex gap-2 flex-1">
+      <input id="tgt-search" type="text" placeholder="搜索名称/主机..." onkeyup="renderTargets()"
+        class="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"/>
+      <select id="tgt-status-filter" onchange="renderTargets()"
+        class="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none bg-white">
+        <option value="">全部状态</option>
+        <option value="UP">UP</option>
+        <option value="DOWN">DOWN</option>
+        <option value="DEGRADED">DEGRADED</option>
+        <option value="FLAPPING">FLAPPING</option>
+        <option value="UNKNOWN">UNKNOWN</option>
+      </select>
+    </div>
+    <button onclick="openAddTarget()"
+      class="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      添加目标
+    </button>
+  </div>
+
+  <!-- 目标表格 -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 border-b border-slate-200">
+        <tr>
+          <th class="text-left px-5 py-3 text-slate-600 font-medium">状态</th>
+          <th class="text-left px-4 py-3 text-slate-600 font-medium">名称</th>
+          <th class="text-left px-4 py-3 text-slate-600 font-medium hidden md:table-cell">主机 / 端口</th>
+          <th class="text-left px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">协议</th>
+          <th class="text-left px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">延迟</th>
+          <th class="text-left px-4 py-3 text-slate-600 font-medium hidden xl:table-cell">7d 可用性</th>
+          <th class="text-left px-4 py-3 text-slate-600 font-medium hidden xl:table-cell">标签</th>
+          <th class="text-right px-5 py-3 text-slate-600 font-medium">操作</th>
+        </tr>
+      </thead>
+      <tbody id="targets-tbody" class="divide-y divide-slate-50">
+        <tr><td colspan="8" class="text-center py-12 text-slate-400">加载中...</td></tr>
+      </tbody>
+    </table>
+    <div id="targets-pagination" class="px-5 py-3 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     事件页
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-events" class="page hidden">
+  <div class="flex gap-3 mb-5">
+    <input id="evt-search" type="text" placeholder="搜索目标..." onkeyup="renderEvents()"
+      class="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300 max-w-xs"/>
+    <select id="evt-type-filter" onchange="renderEvents()"
+      class="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none bg-white">
+      <option value="">全部类型</option>
+      <option value="DOWN">DOWN 事件</option>
+      <option value="UP">UP 恢复</option>
+      <option value="DEGRADED">降级</option>
+      <option value="FLAPPING">抖动</option>
+    </select>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+    <div id="events-list" class="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+      <div class="text-center py-12 text-slate-400 text-sm">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     告警页
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-alerts" class="page hidden">
+  <div class="flex gap-3 mb-5">
+    <select id="alert-status-filter" onchange="renderAlerts()"
+      class="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none bg-white">
+      <option value="firing">进行中</option>
+      <option value="acknowledged">已确认</option>
+      <option value="resolved">已解决</option>
+      <option value="">全部</option>
+    </select>
+  </div>
+  <div id="alerts-list" class="space-y-3">
+    <div class="text-center py-12 text-slate-400 text-sm">加载中...</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     探针页
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-probes" class="page hidden">
+  <div id="probes-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="text-center py-12 text-slate-400 text-sm col-span-full">加载中...</div>
+  </div>
+</div>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     添加目标模态框
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="modal-add" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 slide-in">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="font-semibold text-slate-800">添加监控目标</h3>
+      <button onclick="closeModal('modal-add')" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="px-6 py-4 space-y-4">
+      <div>
+        <label class="text-sm font-medium text-slate-600 block mb-1">名称 <span class="text-red-500">*</span></label>
+        <input id="add-name" type="text" placeholder="如：支付网关" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"/>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="col-span-2">
+          <label class="text-sm font-medium text-slate-600 block mb-1">主机 <span class="text-red-500">*</span></label>
+          <input id="add-host" type="text" placeholder="gateway.example.com" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"/>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-600 block mb-1">端口</label>
+          <input id="add-port" type="number" placeholder="443" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"/>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium text-slate-600 block mb-1">协议 <span class="text-red-500">*</span></label>
+          <select id="add-proto" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white">
+            <option value="https">HTTPS</option>
+            <option value="http">HTTP</option>
+            <option value="tcp">TCP</option>
+            <option value="icmp">ICMP</option>
+            <option value="dns">DNS</option>
+            <option value="grpc">gRPC</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-600 block mb-1">检测间隔</label>
+          <select id="add-interval" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white">
+            <option value="10">10 秒</option>
+            <option value="30" selected>30 秒</option>
+            <option value="60">1 分钟</option>
+            <option value="300">5 分钟</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-600 block mb-1">标签（逗号分隔）</label>
+        <input id="add-tags" type="text" placeholder="生产,P1,核心" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"/>
+      </div>
+      <div id="add-error" class="hidden text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2"></div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+      <button onclick="closeModal('modal-add')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition">取消</button>
+      <button onclick="submitAddTarget()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     目标详情模态框
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="modal-detail" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 slide-in">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="font-semibold text-slate-800" id="detail-title">目标详情</h3>
+      <div class="flex gap-2">
+        <button id="detail-silence-btn" onclick="toggleSilence()" class="text-xs px-3 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition">静默</button>
+        <button id="detail-probe-btn" onclick="probeNow()" class="text-xs px-3 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition">立即探测</button>
+        <button onclick="closeModal('modal-detail')" class="text-slate-400 hover:text-slate-600 ml-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="px-6 py-4">
+      <!-- 基本信息 -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+        <div class="bg-slate-50 rounded-lg p-3">
+          <div class="text-xs text-slate-500 mb-1">当前状态</div>
+          <div class="font-semibold" id="detail-status">—</div>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-3">
+          <div class="text-xs text-slate-500 mb-1">平均延迟</div>
+          <div class="font-semibold" id="detail-latency">—</div>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-3">
+          <div class="text-xs text-slate-500 mb-1">7天可用性</div>
+          <div class="font-semibold" id="detail-avail">—</div>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-3">
+          <div class="text-xs text-slate-500 mb-1">连续失败</div>
+          <div class="font-semibold" id="detail-fails">—</div>
+        </div>
+      </div>
+      <!-- 延迟图 -->
+      <div class="mb-4">
+        <div class="text-xs font-medium text-slate-500 mb-2">延迟趋势（近 24 小时）</div>
+        <div class="h-32 bg-slate-50 rounded-lg p-3">
+          <canvas id="detail-chart"></canvas>
+        </div>
+      </div>
+      <!-- 最近事件 -->
+      <div>
+        <div class="text-xs font-medium text-slate-500 mb-2">最近事件</div>
+        <div id="detail-events" class="space-y-1 max-h-40 overflow-y-auto text-xs"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- toast 通知 -->
+<div id="toast" class="hidden fixed bottom-5 right-5 z-50 bg-slate-800 text-white text-sm px-4 py-3 rounded-xl shadow-lg slide-in"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
